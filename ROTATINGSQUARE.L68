@@ -1,0 +1,334 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 20/01/2025 00:12:56
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Rotating on a Cartesian Plane
+00000000                             3  * Written by :  Oliwier Jakubiec
+00000000                             4  * Date       :  18/01/2025
+00000000                             5  * Description:  Draws a square to the screen and rotates it about a center point (0,0)
+00000000                             6  *               a full 360 deg using Matrix rotation
+00000000                             7  *-----------------------------------------------------------
+00000000                             8  
+00001000                             9      ORG    $1000
+00001000                            10  START:                     
+00001000                            11          ; Load the precomputed SINE and COSINE value tables into A1 and A2
+00001000  43F9 000012E4             12          LEA         COS_TABLE,A1
+00001006  45F9 00001250             13          LEA         SINE_TABLE,A2
+0000100C                            14          
+0000100C                            15          ; Set color to #ffff00 (cyan)
+0000100C                            16          ; color set as $00BBGGRR
+0000100C  223C 00FFFF00             17          MOVE.L      #$00FFFF00,D1
+00001012  7050                      18          MOVE.L      #80,D0        
+00001014  4E4F                      19          TRAP        #15
+00001016                            20          
+00001016                            21          ; Turns on double buffer
+00001016                            22          ; Causes graphics to be drawn to an off screen buffer instead of directly to
+00001016                            23          ;   the screen
+00001016  7211                      24          MOVE.L      #17,D1
+00001018  705C                      25          MOVE.L      #92,D0
+0000101A  4E4F                      26          TRAP        #15
+0000101C                            27          
+0000101C                            28          ; Set pen width in D1
+0000101C  7203                      29          MOVE.L      #3,D1
+0000101E  705D                      30          MOVE.L      #93,D0
+00001020  4E4F                      31          TRAP        #15
+00001022                            32     
+00001022                            33  ;   Main loop starts here
+00001022                            34  DRAW:
+00001022                            35          
+00001022                            36          ; Swap the current buffer screen to display the off-screen buffer
+00001022  705E                      37          MOVE.L       #94,D0
+00001024  4E4F                      38          TRAP         #15
+00001026                            39  
+00001026  323C FF00                 40          MOVE.w      #$FF00,d1           * clear screen
+0000102A  700B                      41          MOVEQ       #11,d0          * position cursor
+0000102C  4E4F                      42          TRAP            #15
+0000102E                            43  
+0000102E                            44  *--------------------------------------------*
+0000102E                            45          * Rotate all the points about the current angle
+0000102E                            46          
+0000102E                            47          ; rotate x1, y1
+0000102E  2239 0000138E             48          MOVE.L      x1,D1       ; Move x1 and y1 into D1 and D2
+00001034  2439 00001392             49          MOVE.L      y1,D2
+0000103A  6100 01CC                 50          BSR         ROTATE      ; Branch to ROTATE
+0000103E  23C5 000013AE             51          MOVE.L      D5,Ax1      ; Move the computed rotated x1 and y1 into the 
+00001044  23C2 000013B2             52          MOVE.L      D2,Ay1      ;   actual x1 and y1
+0000104A                            53          
+0000104A                            54          ; rotate x2, y2
+0000104A  2239 00001396             55          MOVE.L      x2,D1
+00001050  2439 0000139A             56          MOVE.L      y2,D2
+00001056  6100 01B0                 57          BSR         ROTATE
+0000105A  23C5 000013B6             58          MOVE.L      D5,Ax2
+00001060  23C2 000013BA             59          MOVE.L      D2,Ay2
+00001066                            60          
+00001066                            61          ; rotate x3, y3
+00001066  2239 0000139E             62          MOVE.L      x3,D1
+0000106C  2439 000013A2             63          MOVE.L      y3,D2
+00001072  6100 0194                 64          BSR         ROTATE
+00001076  23C5 000013BE             65          MOVE.L      D5,Ax3
+0000107C  23C2 000013C2             66          MOVE.L      D2,Ay3
+00001082                            67          
+00001082                            68          ; rotate x4, y4
+00001082  2239 000013A6             69          MOVE.L      x4,D1
+00001088  2439 000013AA             70          MOVE.L      y4,D2
+0000108E  6100 0178                 71          BSR         ROTATE
+00001092  23C5 000013C6             72          MOVE.L      D5,Ax4
+00001098  23C2 000013CA             73          MOVE.L      D2,Ay4
+0000109E                            74  
+0000109E                            75  *------------------------------------------*
+0000109E                            76  * Calculate where to draw each coord based off the screen width and height
+0000109E                            77  
+0000109E  2E39 000013AE             78          MOVE.L      Ax1,D7               ; Move Ax1 into D7
+000010A4  6100 012A                 79          BSR         CALCPOS_X            ; Branch to Subroutine to calculate X Position
+000010A8  23C7 000013AE             80          MOVE.L      D7,Ax1               ; Store the actual x position into Ax1
+000010AE                            81          
+000010AE  2E39 000013B2             82          MOVE.L      Ay1,D7               ; Move Ay1 into D7
+000010B4  6100 0132                 83          BSR         CALCPOS_Y            ; Branch to Subroutine to calculate Y Position
+000010B8  23C7 000013B2             84          MOVE.L      D7,Ay1               ; Store the actual y position into Ay1
+000010BE                            85          
+000010BE  2E39 000013B6             86          MOVE.L      Ax2,D7
+000010C4  6100 010A                 87          BSR         CALCPOS_X
+000010C8  23C7 000013B6             88          MOVE.L      D7,Ax2
+000010CE                            89          
+000010CE  2E39 000013BA             90          MOVE.L      Ay2,D7
+000010D4  6100 0112                 91          BSR         CALCPOS_Y
+000010D8  23C7 000013BA             92          MOVE.L      D7,Ay2
+000010DE                            93          
+000010DE  2E39 000013BE             94          MOVE.L      Ax3,D7
+000010E4  6100 00EA                 95          BSR         CALCPOS_X
+000010E8  23C7 000013BE             96          MOVE.L      D7,Ax3
+000010EE                            97          
+000010EE  2E39 000013C2             98          MOVE.L      Ay3,D7
+000010F4  6100 00F2                 99          BSR         CALCPOS_Y
+000010F8  23C7 000013C2            100          MOVE.L      D7,Ay3
+000010FE                           101  
+000010FE  2E39 000013C6            102          MOVE.L      Ax4,D7
+00001104  6100 00CA                103          BSR         CALCPOS_X
+00001108  23C7 000013C6            104          MOVE.L      D7,Ax4
+0000110E                           105          
+0000110E  2E39 000013CA            106          MOVE.L      Ay4,D7
+00001114  6100 00D2                107          BSR         CALCPOS_Y
+00001118  23C7 000013CA            108          MOVE.L      D7,Ay4
+0000111E                           109          
+0000111E                           110  *---------------------------------------------*
+0000111E                           111  * Drawing the points to the screen as lines from x1y1 to x2y2
+0000111E                           112  * x1 is placed in D1, y1 into D2, x2 into D3, and y2 into D4
+0000111E                           113  
+0000111E                           114          ; Move points x1 y1 x2 y2 into registers
+0000111E  2239 000013AE            115          MOVE.L      Ax1,D1
+00001124  2439 000013B2            116          MOVE.L      Ay1,D2
+0000112A  2639 000013B6            117          MOVE.L      Ax2,D3
+00001130  2839 000013BA            118          MOVE.L      Ay2,D4
+00001136                           119          ; draw line from x1y1 to x2y2   
+00001136  7054                     120          MOVE.L      #84,D0          
+00001138  4E4F                     121          TRAP        #15
+0000113A                           122  
+0000113A                           123          ; Move points x3 y3 x4 y4 into registers
+0000113A  2239 000013BE            124          MOVE.L      Ax3,D1
+00001140  2439 000013C2            125          MOVE.L      Ay3,D2
+00001146  2639 000013C6            126          MOVE.L      Ax4,D3
+0000114C  2839 000013CA            127          MOVE.L      Ay4,D4
+00001152                           128          ; draw line from x3y3 to x4y4
+00001152  7054                     129          MOVE.L      #84,D0          
+00001154  4E4F                     130          TRAP        #15
+00001156                           131  
+00001156                           132          ; Move points x1 y1 x3 y3 into registers
+00001156  2239 000013AE            133          MOVE.L      Ax1,D1
+0000115C  2439 000013B2            134          MOVE.L      Ay1,D2
+00001162  2639 000013BE            135          MOVE.L      Ax3,D3
+00001168  2839 000013C2            136          MOVE.L      Ay3,D4
+0000116E                           137          ; draw line from x1y1 to x3y3
+0000116E  7054                     138          MOVE.L      #84,D0          
+00001170  4E4F                     139          TRAP        #15
+00001172                           140  
+00001172                           141          ; Move points x2 y2 x4 y4 into registers
+00001172  2239 000013B6            142          MOVE.L      Ax2,D1
+00001178  2439 000013BA            143          MOVE.L      Ay2,D2
+0000117E  2639 000013C6            144          MOVE.L      Ax4,D3
+00001184  2839 000013CA            145          MOVE.L      Ay4,D4
+0000118A                           146          ; draw line from x2y2 to x4y4
+0000118A  7054                     147          MOVE.L      #84,D0          
+0000118C  4E4F                     148          TRAP        #15
+0000118E                           149  
+0000118E                           150  *------------------------------------*
+0000118E                           151  * Adds a delay to the line so it doesnt rotate too fast
+0000118E                           152  
+0000118E                           153          ; set the duration of the timer
+0000118E  23FC 00004E20 000013CE   154          MOVE.L      #20000,timer
+00001198                           155  DELAY:     
+00001198  53B9 000013CE            156          SUBI.L      #1,timer        ; decrement timer by 1 to simulate a delay
+0000119E  0CB9 00000000 000013CE   157          CMP.L       #0,timer        ; compare 0 to the value of timer
+000011A8  66EE                     158          BNE         DELAY           ; branch back to DELAY if the previous compare was not equal
+000011AA                           159      
+000011AA                           160  
+000011AA                           161  *-------------------------------------*
+000011AA                           162  * Check and increment values
+000011AA                           163  
+000011AA                           164   ; increment the angle index by 4 as each element in the
+000011AA                           165   ; array is a Long so incrementing by 4 bytes gives the next element   
+000011AA  58B9 00001380            166          ADDI.L      #4,angle        
+000011B0  0CB9 00000094 00001380   167          CMP.L       #148,angle      ; Compare angle to see if the last element has been reached
+000011BA  6600 FE66                168          BNE         DRAW            ; If not then Branch back to the start of the loop
+000011BE                           169         
+000011BE  23FC 00000000 00001380   170          MOVE.L      #0,angle        ; Else if its reached the last element then reset angle to 0
+000011C8  4EF8 1022                171          JMP         DRAW            ; Branch back to the start of the loop
+000011CC                           172          
+000011CC  FFFF FFFF                173          SIMHALT             ; halt simulator
+000011D0                           174          
+000011D0                           175  ****************************************
+000011D0                           176  *****        SUBROUTINES        ********
+000011D0                           177  ****************************************
+000011D0                           178  
+000011D0                           179  * Subroutine to calculate the X position
+000011D0                           180  CALCPOS_X:
+000011D0  CFF9 0000138C            181       MULS.W      sv,D7               ; Signed Multiply by the scalar value
+000011D6  8FFC 2710                182       DIVS.W      #10000,D7           ; Signed divide by 10^4 to deal with the scaled SIN/COS values
+000011DA  CEBC 0000FFFF            183       AND.L       #$0000FFFF,D7       ; AND operation to clear the high order word of D7 as thats where the remainder of the DIV operator is held
+000011E0  DEB9 00001388            184       ADD.L       cx,D7               ; Add the center-x value to the x point as currently its based off 0,0 still 
+000011E6                           185       
+000011E6  4E75                     186       RTS                             ; Return statement
+000011E8                           187       
+000011E8                           188  * Subroutine to calculate the Y position     
+000011E8                           189  CALCPOS_Y:  
+000011E8  CFF9 0000138C            190       MULS.W      sv,D7               ; Signed Multiply by the scalar value
+000011EE  8FFC 2710                191       DIVS.W      #10000,D7           ; Signed divide by 10^4 to deal with the scaled SIN/COS values
+000011F2  CEBC 0000FFFF            192       AND.L       #$0000FFFF,D7       ; AND operation to clear the high order word of D7
+000011F8  4447                     193       NEG         D7                  ; Negate D7 as a positive Y value actually moves points down the screen not up
+000011FA  DEB9 00001384            194       ADD.L       cy,D7               ; Add center-Y value to the y point
+00001200  CEBC 0000FFFF            195       AND.L       #$0000FFFF,D7       ; AND again the high order Word to deal with overflow from the previous NEG 
+00001206                           196  
+00001206  4E75                     197       RTS                             ; Return statement
+00001208                           198    
+00001208                           199  * The rotate subroutine   
+00001208                           200  ROTATE:
+00001208                           201          
+00001208  2039 00001380            202          MOVE.L      angle,D0         ; Copy angle into D0
+0000120E  23F1 0000 0000137C       203          MOVE.L      (A1,D0),cos      ; Copy the indexed value from the sin table using angle as the index, into sin
+00001216  23F2 0000 00001378       204          MOVE.L      (A2,D0),sin      ; Copy the indexed value from the cosine table using angle as the index, into cos
+0000121E                           205  
+0000121E                           206          
+0000121E                           207  * Calculate the new x value
+0000121E                           208  * The matrix multiplication for the x value is xcos(Ø) - ysin(Ø) 
+0000121E  2601                     209          MOVE.L      D1,D3            ; Copy d1,(x), into d3
+00001220  2802                     210          MOVE.L      D2,D4            ; Copy d2,(y), into d4
+00001222  2E39 0000137C            211          MOVE.L      cos,D7           ; Move cos(angle) into D7
+00001228  C7C7                     212          MULS.W      D7,D3            ; Multiply x * cos(angle) and store in D3
+0000122A                           213          
+0000122A  2C39 00001378            214          MOVE.L      sin,D6           ; Move sin(angle) into D6
+00001230  C9C6                     215          MULS.W      D6,D4            ; Multiply y * sin(angle) and store in D4
+00001232                           216          
+00001232  9684                     217          SUB.L       D4,D3            ; Subtract D4 (ysin(angle)) from D3 (cos(angle))
+00001234  2A03                     218          MOVE.L      D3,D5            ; Store new X in D5
+00001236                           219          
+00001236                           220  * Calculate the new y value
+00001236                           221  * The matrix multiplication for the y value is xsin(Ø) + ycos(Ø) 
+00001236  2601                     222          MOVE.L      D1,D3            ; Copy d1,(x), into d3
+00001238  2802                     223          MOVE.L      D2,D4            ; Copy d2,(y), into d4
+0000123A  2E39 00001378            224          MOVE.L      sin,D7           ; Move sin(angle) into D7
+00001240  C7C7                     225          MULS.W      D7,D3            ; Multiply x * sin(angle) and store in D3
+00001242                           226          
+00001242  2C39 0000137C            227          MOVE.L      cos,D6           ; Move cos(angle) into D6
+00001248  C9C6                     228          MULS.W      D6,D4            ; Multiply y * cos(angle) and store in D4
+0000124A                           229          
+0000124A  D684                     230          ADD.L       D4,D3            ; Add D3 (xsin(angle)) and D4 (ycos(angle))
+0000124C  2403                     231          MOVE.L      D3,D2            ; Store new Y in D2
+0000124E                           232          
+0000124E  4E75                     233          RTS                          ;Return Statement
+00001250                           234       
+00001250                           235  *----------------------------------------*
+00001250                           236  * Variables and define stuff    
+00001250                           237  *----------------------------------------*
+00001250                           238  
+00001250                           239  * Array of precomputed SINE values
+00001250                           240  * Each value is scaled up by 10^4 as decimals dont exist in m68k asm
+00001250                           241  * Goes from 0deg - 360deg in steps of 10 deg
+00001250                           242  SINE_TABLE 
+00001250= 00000000 000006C8 ...    243      DC.L    0000, 1736, 3420, 5000, 6427, 7660, 8660, 9396, 9848, 10000     ; 0 - 1
+00001278= 00002678 00002678 ...    244      DC.L    9848, 9848, 9396, 8660, 7660, 6427, 5000, 3420, 1736, 0000      ; 1 - 0
+000012A0= 0000F938 0000F2A4 ...    245      DC.L    $F938, $F2A4, $EC78, $E6E5, $E214, $DE2C, $DB4C, $D988, $D8F0   ; -0 - -1
+000012C4= 0000D988 0000DB4C ...    246      DC.L    $D988, $DB4C, $DE2C, $E214, $E6E5, $EC78, $F2A4, $F938          ' -1 - 0
+000012E4                           247  
+000012E4                           248  * Array of precomputed COSINE values
+000012E4                           249  * Also goes from 0deg - 360deg in steps of 10 deg
+000012E4                           250  COS_TABLE   
+000012E4= 00002710 00002678 ...    251      DC.L    10000, 9848, 9396, 8660, 7660, 6427, 5000, 3420, 1736, 0000     ; 1 - 0
+0000130C= 0000F938 0000F2A4 ...    252      DC.L    $F938, $F2A4, $EC78, $E6E5, $E214, $DE2C, $DB4C, $D988, $D8F0   ; -0 - -1
+00001330= 0000D988 0000DB4C ...    253      DC.L    $D988, $DB4C, $DE2C, $E214, $E6E5, $EC78, $F2A4, $F938          ; -1 - 0
+00001350= 00000000 000006C8 ...    254      DC.L    0000, 1736, 3420, 5000, 6427, 7660, 8660, 9396, 9848, 10000     ; 0 - 1
+00001378                           255      
+00001378= 00000001                 256  sin     dc.l    1              * sine
+0000137C= 00000001                 257  cos     dc.l    1              * cosine
+00001380= 00000000                 258  angle   dc.l    0              * angle
+00001384                           259  
+00001384= 000000F0                 260  cy      dc.L    240      ;center y
+00001388= 00000145                 261  cx      dc.L    325      ;center x
+0000138C= 004B                     262  sv      dc.W    75       ;scale value
+0000138E                           263  
+0000138E                           264  * Coordinates 
+0000138E                           265  * NOT : Any coordinates larger than 2 might go off screen and cause it glitch out
+0000138E                           266  
+0000138E= FFFFFFFF                 267  x1   dc.l    $FFFFFFFF          ; x1  -  values constant
+00001392= 00000000                 268  y1   dc.l    0                  ; y1  -
+00001396= FFFFFFFE                 269  x2   dc.l    $FFFFFFFE          ; x2  -
+0000139A= 00000000                 270  y2   dc.l    0                  ; y2  -
+0000139E                           271  
+0000139E= FFFFFFFF                 272  x3   dc.l    $FFFFFFFF          ; x3  -  values constant
+000013A2= FFFFFFFF                 273  y3   dc.l    $FFFFFFFF          ; y3  -
+000013A6= FFFFFFFE                 274  x4   dc.l    $FFFFFFFE          ; x4  -
+000013AA= FFFFFFFF                 275  y4   dc.l    $FFFFFFFF          ; y4  -
+000013AE                           276  
+000013AE= 00000001                 277  Ax1   dc.l    1         ; Actual x1  -  value is computed
+000013B2= 00000001                 278  Ay1   dc.l    1         ; Actual y1
+000013B6= 00000001                 279  Ax2   dc.l    1         ; Actual x2
+000013BA= 00000001                 280  Ay2   dc.l    1         ; Actual y2
+000013BE                           281  
+000013BE= 00000001                 282  Ax3   dc.l    1         ; Actual x3
+000013C2= 00000001                 283  Ay3   dc.l    1         ; Actual y3
+000013C6= 00000001                 284  Ax4   dc.l    1         ; Actual x4
+000013CA= 00000001                 285  Ay4   dc.l    1         ; Actual y4
+000013CE                           286  
+000013CE= 00000000                 287  timer   dc.l    0       ; Timer
+000013D2                           288  *----------------------------------*
+000013D2                           289  *               END                *
+000013D2                           290  *----------------------------------*
+000013D2                           291      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ANGLE               1380
+AX1                 13AE
+AX2                 13B6
+AX3                 13BE
+AX4                 13C6
+AY1                 13B2
+AY2                 13BA
+AY3                 13C2
+AY4                 13CA
+CALCPOS_X           11D0
+CALCPOS_Y           11E8
+COS                 137C
+COS_TABLE           12E4
+CX                  1388
+CY                  1384
+DELAY               1198
+DRAW                1022
+ROTATE              1208
+SIN                 1378
+SINE_TABLE          1250
+START               1000
+SV                  138C
+TIMER               13CE
+X1                  138E
+X2                  1396
+X3                  139E
+X4                  13A6
+Y1                  1392
+Y2                  139A
+Y3                  13A2
+Y4                  13AA
